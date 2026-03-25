@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>Network Security Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    body {
+        margin: 0;
+        font-family: 'Segoe UI', sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+    }
+
+    .container {
+        display: flex;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+        width: 220px;
+        height: 100vh;
+        background: #020617;
+        padding: 20px;
+        position: fixed;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+    }
+
+    .sidebar h2 {
+        color: #38bdf8;
+    }
+
+    .sidebar a {
+        display: block;
+        color: #cbd5f5;
+        text-decoration: none;
+        margin: 15px 0;
+    }
+
+    .sidebar a:hover {
+        color: #38bdf8;
+    }
+
+    /* MAIN */
+    .main {
+        margin-left: 240px;
+        padding: 20px;
+        width: calc(100% - 240px);
+    }
+
+    h1 {
+        text-align: center;
+        color: #38bdf8;
+    }
+
+    h2 {
+        color: #7dd3fc;
+    }
+
+    /* ALERTS */
+    .alert-container {
+        max-height: 300px;
+        overflow-y: auto;
+        padding-right: 10px;
+    }
+
+    .alert {
+        background: rgba(239, 68, 68, 0.15);
+        color: #fca5a5;
+        padding: 12px;
+        margin: 10px 0;
+        border-left: 5px solid #ef4444;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    /* TABLE */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        background: #1e293b;
+    }
+
+    th, td {
+        padding: 10px;
+        border-bottom: 1px solid #475569;
+    }
+
+    th {
+        background: #334155;
+        color: #38bdf8;
+    }
+
+    tr:hover {
+        background: #334155;
+    }
+</style>
+
+
+</head>
+
+<body>
+
+<div class="container">
+
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <h2>🧭 Menu</h2>
+    <!-- <a href="#dashboard">Dashboard</a> -->
+    <a href="#alerts">Alerts</a>
+    <a href="#traffic">Traffic</a>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+    <h1>Network Security Dashboard</h1>
+
+    <h2 id="alerts">🚨 Alerts</h2>
+    <div class="alert-container" id="alerts"></div>
+
+    <h2 id="traffic">📈 Traffic by IP</h2>
+    <canvas id="ipChart"></canvas>
+
+    <h2>📊 Recent Traffic</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>IP</th>
+                <th>Port</th>
+                <th>Protocol</th>
+            </tr>
+        </thead>
+        <tbody id="logs"></tbody>
+    </table>
+</div>
+```
+
+</div>
+
+<script>
+async function fetchData() {
+    try {
+        const res = await fetch("/data");
+        const data = await res.json();
+
+        // ALERTS
+        let alertHTML = "";
+        data.alerts.forEach(a => {
+            alertHTML += `<div class="alert">⚠ ${a[1]}</div>`;
+        });
+        document.getElementById("alerts").innerHTML = alertHTML;
+
+        // LOGS
+        let logHTML = "";
+        data.logs.forEach(l => {
+            logHTML += `<tr>
+                <td>${l[1]}</td>
+                <td>${l[2]}</td>
+                <td>${l[3]}</td>
+            </tr>`;
+        });
+        document.getElementById("logs").innerHTML = logHTML;
+
+        // GRAPH
+        const ipCounts = {};
+        data.logs.forEach(l => {
+            ipCounts[l[1]] = (ipCounts[l[1]] || 0) + 1;
+        });
+
+        const labels = Object.keys(ipCounts);
+        const values = Object.values(ipCounts);
+
+        const ctx = document.getElementById('ipChart').getContext('2d');
+
+        if (window.chart) {
+            window.chart.destroy();
+        }
+
+        window.chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Requests per IP',
+                    data: values
+                }]
+            }
+        });
+
+    } catch (err) {
+        console.error("Error fetching data:", err);
+    }
+}
+
+// initial + auto refresh
+fetchData();
+setInterval(fetchData, 3000);
+</script>
+
+</body>
+</html>
