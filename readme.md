@@ -65,18 +65,12 @@ Web Dashboard (HTML, CSS, JS)
 ---
 
 ## 🚀 How to Run the Project
+### 1. Install npcap-1.87.exe from the folder
 
-### 1. Install Dependencies
+### 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
-```
-
-### 2. Initialize Database
-
-```python
-from database import init_db
-init_db()
 ```
 
 ### 3. Start Packet Capture (Run as Administrator)
