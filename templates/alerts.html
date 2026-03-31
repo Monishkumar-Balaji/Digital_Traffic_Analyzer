@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<h1>Security Alerts</h1>
+
+<div class="card">
+    <div style="margin-bottom: 10px;">
+        <button id="pauseBtn" class="btn btn-primary">⏸ Pause Feed</button>
+    </div>
+    
+    <div class="alert-container" id="alerts-box" style="max-height: 500px;"></div>
+</div>
+
+<script>
+    let isPaused = false;
+
+    document.getElementById('pauseBtn').addEventListener('click', function () {
+        isPaused = !isPaused;
+        this.innerHTML = isPaused ? '▶ Resume Feed' : '⏸ Pause Feed';
+        this.className = isPaused ? 'btn btn-danger' : 'btn btn-primary';
+    });
+
+    async function fetchData() {
+        if (isPaused) return;
+        try {
+            const res = await fetch("/data");
+            const data = await res.json();
+            
+            let alertHTML = "";
+            let alertCount = data.alerts.length;
+            for(let i=0; i<alertCount; i++) {
+                alertHTML += `<div class="alert">
+                                <strong>⚠ ALERT #${data.alerts[i][0]}</strong> <br>
+                                <span>${data.alerts[i][1]}</span> <br>
+                                <small style="color: #94a3b8;">${data.alerts[i][2] || ''}</small>
+                              </div>`;
+            }
+            document.getElementById("alerts-box").innerHTML = alertHTML;
+        } catch (err) {
+            console.error("Error fetching data:", err);
+        }
+    }
+
+    fetchData();
+    setInterval(fetchData, 3000);
+</script>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<h1> Traffic Logs</h1>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <input type="text" id="searchInput" class="search-box" placeholder="🔍 Search IP...">
+        <button id="pauseBtn" class="btn btn-primary">⏸ Pause Feed</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>IP</th>
+                <th>Port</th>
+                <th>Protocol</th>
+                <th>Size (Bytes)</th>
+            </tr>
+        </thead>
+        <tbody id="logs-table"></tbody>
+    </table>
+</div>
+
+<script>
+    let isPaused = false;
+    let globalLogs = [];
+
+    document.getElementById('pauseBtn').addEventListener('click', function () {
+        isPaused = !isPaused;
+        this.innerHTML = isPaused ? '▶ Resume Feed' : '⏸ Pause Feed';
+        this.className = isPaused ? 'btn btn-danger' : 'btn btn-primary';
+    });
+
+    document.getElementById('searchInput').addEventListener('input', renderLogs);
+
+    function renderLogs() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        let logHTML = "";
+        globalLogs.forEach(l => {
+            if (l[1] && l[1].toLowerCase().includes(searchTerm)) {
+                // If old database was migrated, the order might be id, ip, port, protocol, timestamp, size.
+                // Normally size was expected at l[4]. If l[4] is a timestamp (string), size might be at l[5].
+                let sizeVal = (typeof l[4] === 'number') ? l[4] : (l[5] || 0);
+
+                logHTML += `<tr>
+                    <td>${l[0]}</td>
+                    <td>${l[1]}</td>
+                    <td>${l[2]}</td>
+                    <td>${l[3]}</td>
+                    <td>${sizeVal}</td>
+                </tr>`;
+            }
+        });
+        document.getElementById("logs-table").innerHTML = logHTML;
+    }
+
+    async function fetchData() {
+        if (isPaused) return;
+        try {
+            const res = await fetch("/data");
+            const data = await res.json();
+            globalLogs = data.logs;
+            renderLogs();
+        } catch (err) {
+            console.error("Error fetching data:", err);
+        }
+    }
+
+    fetchData();
+    setInterval(fetchData, 3000);
+</script>
+{% endblock %}

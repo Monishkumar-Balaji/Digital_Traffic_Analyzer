@@ -1,0 +1,244 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<style>
+    .metrics-bar { display: flex; justify-content: flex-end; gap: 30px; margin-bottom: 12px; font-weight: bold; }
+    .metric { text-align: left; }
+    .metric-title { font-size: 10px; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+    .metric-value { font-size: 18px; color: #f8fafc; }
+    
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+    .chart-box { text-align: center; height: 180px; position: relative;}
+    .chart-box-wrapper { position: relative; height: 160px; width: 100%; }
+    .chart-title { font-size: 11px; font-weight: bold; color: #f8fafc; margin-bottom: 8px; letter-spacing: 1px; text-transform: uppercase; }
+    
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+    .btn { background: #334155; color: #f8fafc; border: 1px solid #475569; padding: 10px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: all 0.2s; }
+    .btn:hover { background: #475569; border-color: #94a3b8; }
+    .btn-full { grid-column: 1 / -1; margin-top: -5px; }
+    
+    .status-normal { color: #cbd5e1; }
+    .status-alert { color: #ef4444; font-weight: bold; }
+</style>
+
+<div class="header">
+    <h2 style="margin: 0; color: #f8fafc; font-size: 20px;">Network Security Monitor (SIEM)</h2>
+    <div class="metrics-bar">
+        <div class="metric">
+            <div class="metric-title">PACKETS/SEC</div>
+            <div class="metric-value" id="val-packets">0</div>
+        </div>
+        <div class="metric">
+            <div class="metric-title">ACTIVE ALERTS</div>
+            <div class="metric-value" id="val-alerts">0</div>
+        </div>
+        <div class="metric">
+            <div class="metric-title">BLOCKED IPS</div>
+            <div class="metric-value" id="val-ips">0</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="charts-grid">
+        <div class="chart-box">
+            <div class="chart-title">TRAFFIC VOLUME (60s)</div>
+            <div class="chart-box-wrapper">
+                <canvas id="volChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-box">
+            <div class="chart-title">PORT DISTRIBUTION</div>
+            <div class="chart-box-wrapper">
+                <canvas id="portChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="padding: 0; overflow: hidden; padding-bottom: 15px;">
+    <div style="padding: 20px; padding-bottom: 5px;">
+        <div class="chart-title" style="margin-bottom: 0; text-align: left;">RECENT NETWORK EVENTS</div>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Source IP</th>
+                <th>Port</th>
+                <th>Protocol</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="events-body">
+            <!-- populated by JS -->
+        </tbody>
+    </table>
+</div>
+
+<div class="btn-row">
+    <button class="btn" onclick="triggerAction('simulate_ssh')">Simulate SSH Brute Force</button>
+    <button class="btn" onclick="triggerAction('simulate_ddos')">Simulate DDoS Spike</button>
+    <button class="btn btn-full" onclick="triggerAction('reset')">Reset Logs</button>
+</div>
+
+<script>
+    // Constants for Chart
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.font.family = 'Inter';
+    
+    // Arrays for Time Series Chart
+    const maxDataPoints = 20; // 60s at 3s intervals
+    let volData = Array(maxDataPoints).fill(0);
+    let volLabels = Array(maxDataPoints).fill('');
+    
+    // Initialize Volume Chart
+    const ctxVol = document.getElementById('volChart').getContext('2d');
+    const volChart = new Chart(ctxVol, {
+        type: 'line',
+        data: {
+            labels: volLabels,
+            datasets: [{
+                label: 'Packets/sec',
+                data: volData,
+                borderColor: '#60a5fa',
+                backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true,
+                pointRadius: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false } },
+                y: { grid: { color: '#334155' }, beginAtZero: true }
+            }
+        }
+    });
+
+    // Initialize Port Chart
+    const ctxPort = document.getElementById('portChart').getContext('2d');
+    const portLabels = ['22', '80', '443', '3389', '53', '8080'];
+    const portChart = new Chart(ctxPort, {
+        type: 'bar',
+        data: {
+            labels: portLabels,
+            datasets: [{
+                data: [0,0,0,0,0,0],
+                backgroundColor: '#60a5fa',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false } },
+                y: { grid: { color: '#334155' }, beginAtZero: true }
+            }
+        }
+    });
+
+    async function fetchData() {
+        try {
+            const resp = await fetch("/data");
+            const data = await resp.json();
+
+            // Update Metrics
+            document.getElementById("val-packets").innerText = data.metrics.packets_per_sec;
+            document.getElementById("val-alerts").innerText = data.metrics.active_alerts;
+            document.getElementById("val-ips").innerText = data.metrics.tracked_ips;
+
+            // Update Volume Chart (Shift left, push new)
+            volData.push(data.metrics.packets_per_sec);
+            volData.shift();
+            
+            // Add tiny timestamp on the x-axis every few ticks
+            let d = new Date();
+            let timeStr = d.getSeconds() % 15 === 0 ? `:${d.getSeconds().toString().padStart(2, '0')}` : '';
+            if (d.getSeconds() === 0) timeStr = `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+            volLabels.push(timeStr);
+            volLabels.shift();
+            
+            volChart.update();
+
+            // Update Port Chart
+            portChart.data.datasets[0].data = data.metrics.port_distribution;
+            portChart.update();
+
+            // Update Events Table safely
+            let tableHTML = "";
+            let alertedIPs = new Set((data.alerts || []).map(a => {
+                let match = (a && a[1] ? a[1] : "").match(/IP: ([\d\.]+)/);
+                return match ? match[1] : null;
+            }).filter(Boolean));
+
+            (data.logs || []).slice(0, 8).forEach(log => {
+                if (!log || log.length < 5) return;
+                
+                // Dynamically detect column order due to SQLite migrations
+                let timestampVal = typeof log[4] === 'string' ? log[4] : log[5];
+                let sizeVal = typeof log[4] === 'number' ? log[4] : log[5];
+                
+                let timeStr = timestampVal ? String(timestampVal) : "";
+                let time = timeStr.includes(' ') ? timeStr.split(' ')[1] : timeStr;
+                if (!time) time = "00:00:00";
+                
+                let ip = log[1] || "Unknown";
+                let port = log[2] || 0;
+                let protocol = log[3] || "N/A";
+                let size = sizeVal || 0;
+                
+                // Mark alert status based on historical alerts or obvious simulation indicators
+                let isAlert = alertedIPs.has(ip) || size >= 500 || port === 22 || port === 9999;
+                let status = isAlert ? "ALERT" : "NORMAL";
+                let statusClass = isAlert ? "status-alert" : "status-normal";
+                
+                tableHTML += `<tr>
+                    <td>${time}</td>
+                    <td>${ip}</td>
+                    <td>${port}</td>
+                    <td>${protocol}</td>
+                    <td class="${statusClass}">${status}</td>
+                </tr>`;
+            });
+            document.getElementById("events-body").innerHTML = tableHTML;
+
+        } catch (error) {
+            console.error("Error fetching data:", error);
+        }
+    }
+
+    async function triggerAction(action) {
+        try {
+            const btnObj = event.target;
+            const originalText = btnObj.innerText;
+            btnObj.innerText = "Processing...";
+            btnObj.style.opacity = "0.7";
+            
+            await fetch(`/api/${action}`, { method: "POST" });
+            
+            setTimeout(() => {
+                btnObj.innerText = originalText;
+                btnObj.style.opacity = "1";
+            }, 1000);
+            
+            if (action === 'reset') {
+                volData.fill(0);
+                volChart.update();
+                fetchData();
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
+    setInterval(fetchData, 3000);
+    fetchData(); // Initial load
+</script>
+{% endblock %}

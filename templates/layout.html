@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Network Security Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #111827; color: #f8fafc; margin: 0; padding: 0; font-size: 13px; }
+        
+        /* Top Navigation Bar */
+        .topbar { width: 100%; background: #0b0f19; height: 50px; display: flex; align-items: center; border-bottom: 1px solid #1e293b; position: fixed; top: 0; left: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        .topbar h2 { margin: 0; padding: 0 25px; color: #f8fafc; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border-right: 1px solid #1e293b; display: flex; align-items: center; height: 100%; }
+        .nav-links { display: flex; height: 100%; align-items: center; padding-left: 10px; }
+        .nav-links a { display: flex; align-items: center; gap: 8px; color: #94a3b8; text-decoration: none; padding: 0 20px; height: 100%; font-size: 13px; font-weight: 500; transition: all 0.2s ease; border-bottom: 2px solid transparent; box-sizing: border-box; }
+        .nav-links a:hover { color: #f8fafc; background: #1e293b; border-bottom: 2px solid #475569; }
+        .nav-links a.active { color: #38bdf8; background: rgba(56, 189, 248, 0.1); border-bottom: 2px solid #38bdf8; }
+        
+        .main { margin-top: 50px; padding: 25px 40px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .card { background: #1e293b; padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); margin-bottom: 15px; border: 1px solid #334155;}
+        
+        .alert-container { max-height: 350px; overflow-y: auto; padding-right: 15px; }
+        .alert { background: rgba(239, 68, 68, 0.1); color: #fca5a5; padding: 10px; margin: 8px 0; border-left: 4px solid #ef4444; border-radius: 6px; font-size: 13px; transition: all 0.3s ease; white-space: pre-line; line-height: 1.4; }
+        .alert:hover { transform: translateX(5px); background: rgba(239, 68, 68, 0.2); }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 5px; background: #1e293b; border-radius: 6px; overflow: hidden; }
+        th, td { padding: 10px 15px; text-align: left; border-bottom: 1px solid #334155; font-size: 13px;}
+        th { background: #0f172a; color: #cbd5e1; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px;}
+        tr { transition: background 0.2s ease; }
+        tr:hover { background: #475569; }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <h2>🛡️ SIEM Analytics</h2>
+        <div class="nav-links">
+            <a href="/" class="{% if request.path == '/' %}active{% endif %}">Dashboard</a>
+            <a href="/logs_page" class="{% if request.path == '/logs_page' %}active{% endif %}"> Traffic Logs</a>
+            <a href="/alerts_page" class="{% if request.path == '/alerts_page' %}active{% endif %}"> Alerts</a>
+        </div>
+    </div>
+    <div class="main">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

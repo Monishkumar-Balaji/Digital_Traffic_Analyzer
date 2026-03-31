@@ -1,0 +1,23 @@
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE & Editor Files
+.vscode/
+.idea/
+
+# Application State / Database
+network.db
+network.db-journal
+
+# Logs
+*.log
+
+# Environment variables
+.env
